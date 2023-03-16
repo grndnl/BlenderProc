@@ -27,7 +27,7 @@ def write_bop(output_dir: str, target_objects: Optional[List[MeshObject]] = None
               color_file_format: str = "PNG", dataset: str = "", append_to_existing_output: bool = True,
               depth_scale: float = 1.0, jpg_quality: int = 95, save_world2cam: bool = True,
               ignore_dist_thres: float = 100., m2mm: bool = True, frames_per_chunk: int = 1000,
-              calc_mask_info_coco: bool = True, delta: int = 15):
+              calc_mask_info_coco: bool = True, delta: int = 15, train=True):
     """Write the BOP data
 
     :param output_dir: Path to the output directory.
@@ -59,7 +59,12 @@ def write_bop(output_dir: str, target_objects: Optional[List[MeshObject]] = None
 
     # Output paths.
     dataset_dir = os.path.join(output_dir, dataset)
-    chunks_dir = os.path.join(dataset_dir, 'train_pbr')
+    print(f"train? {train}")
+    if train:
+        out = os.path.join(dataset_dir, 'train_pbr')
+    else:
+        out = os.path.join(dataset_dir, 'val_pbr')
+    chunks_dir = out
     camera_path = os.path.join(dataset_dir, 'camera.json')
 
     # Create the output directory structure.
@@ -128,15 +133,27 @@ def write_bop(output_dir: str, target_objects: Optional[List[MeshObject]] = None
         # Determine for which directories mask_info_coco has to be calculated
         chunk_dirs = sorted(glob.glob(os.path.join(chunks_dir, '*')))
         chunk_dirs = [d for d in chunk_dirs if os.path.isdir(d)]
-        chunk_dir_ids = [d.split('/')[-1] for d in chunk_dirs]
+        chunk_dir_ids = [d.split('\\')[-1] for d in chunk_dirs]
+        # print("---------")
+        # print(chunk_dirs)
+        # print("---------")
+        # print(chunk_dir_ids)
+        # print("---------")
+        # print(starting_chunk_id)
+        # print("---------")
+        # print(f"{starting_chunk_id:06d}")
+        # print("---------")
+        # print(chunk_dir_ids.index(f"{starting_chunk_id:06d}"))
+        # print("---------")
+        # print(chunk_dir_ids.index)
         chunk_dirs = chunk_dirs[chunk_dir_ids.index(f"{starting_chunk_id:06d}"):]
 
-        _BopWriterUtility.calc_gt_masks(chunk_dirs=chunk_dirs, starting_frame_id=starting_frame_id,
-                                        dataset_objects=dataset_objects, delta=delta)
-        _BopWriterUtility.calc_gt_info(chunk_dirs=chunk_dirs, starting_frame_id=starting_frame_id,
-                                       dataset_objects=dataset_objects, delta=delta)
-        _BopWriterUtility.calc_gt_coco(chunk_dirs=chunk_dirs, dataset_objects=dataset_objects,
-                                       starting_frame_id=starting_frame_id)
+        # _BopWriterUtility.calc_gt_masks(chunk_dirs=chunk_dirs, starting_frame_id=starting_frame_id,
+        #                                 dataset_objects=dataset_objects, delta=delta)
+        # _BopWriterUtility.calc_gt_info(chunk_dirs=chunk_dirs, starting_frame_id=starting_frame_id,
+        #                                dataset_objects=dataset_objects, delta=delta)
+        # _BopWriterUtility.calc_gt_coco(chunk_dirs=chunk_dirs, dataset_objects=dataset_objects,
+        #                                starting_frame_id=starting_frame_id)                                   # TODO: do we need this? Don't think so
 
 
 class _BopWriterUtility:
@@ -493,7 +510,7 @@ class _BopWriterUtility:
 
         width = bpy.context.scene.render.resolution_x
         height = bpy.context.scene.render.resolution_y
-        ren = renderer.create_renderer(width=width, height=height, renderer_type='vispy', mode='depth')
+        ren = renderer.create_renderer(width=width, height=height, renderer_type='python', mode='depth')
         ren.set_current()
         for obj in dataset_objects:
             ren.add_object(obj_id=obj.get_cp('category_id'), model_path=obj.get_cp('model_path'))
@@ -575,7 +592,7 @@ class _BopWriterUtility:
         im_width, im_height = bpy.context.scene.render.resolution_x, bpy.context.scene.render.resolution_y
         ren_width, ren_height = 3 * im_width, 3 * im_height
         ren_cx_offset, ren_cy_offset = im_width, im_height
-        ren = renderer.create_renderer(width=ren_width, height=ren_height, renderer_type='vispy', mode='depth')
+        ren = renderer.create_renderer(width=ren_width, height=ren_height, renderer_type='python', mode='depth')
         ren.set_current()
         
         for obj in dataset_objects:

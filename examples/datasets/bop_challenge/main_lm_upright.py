@@ -8,12 +8,18 @@ parser.add_argument('bop_parent_path', help="Path to the bop datasets parent dir
 parser.add_argument('cc_textures_path', default="resources/cctextures", help="Path to downloaded cc textures")
 parser.add_argument('output_dir', help="Path to where the final files will be saved ")
 parser.add_argument('--num_scenes', type=int, default=2000, help="How many scenes with 25 images each to generate")
+parser.add_argument('--obj_ids', type=str, default=None, help="which objs to load")
+parser.add_argument('--val', action=argparse.BooleanOptionalAction, help="train or validation (true or false)")
 args = parser.parse_args()
+print(f"args: {args}")
 
 bproc.init()
 
 # load bop objects into the scene
-target_bop_objs = bproc.loader.load_bop_objs(bop_dataset_path = os.path.join(args.bop_parent_path, 'lm'), mm2m = True)
+obj_ids = [int(item) for item in args.obj_ids.split(',')]
+# print(f"type: {type(obj_ids[0])}")
+# print(f"loading objs: {obj_ids}")
+target_bop_objs = bproc.loader.load_bop_objs(bop_dataset_path = os.path.join(args.bop_parent_path, 'lm'), mm2m=True, obj_ids=obj_ids)
 
 # load distractor bop objects
 tless_dist_bop_objs = bproc.loader.load_bop_objs(bop_dataset_path = os.path.join(args.bop_parent_path, 'tless'), model_type = 'cad', mm2m = True)
@@ -58,13 +64,13 @@ def sample_pose_func(obj: bproc.types.MeshObject):
 bproc.renderer.enable_depth_output(activate_antialiasing=False)
 bproc.renderer.set_max_amount_of_samples(50)
 
-for i in range(args.num_scenes):
+for i in range(args.num_scenes):    # TODO: implement a check to restart to the max number of scenes
 
     # Sample bop objects for a scene
-    sampled_target_bop_objs = list(np.random.choice(target_bop_objs, size=15, replace=False))
-    sampled_distractor_bop_objs = list(np.random.choice(tless_dist_bop_objs, size=3, replace=False))
-    sampled_distractor_bop_objs += list(np.random.choice(ycbv_dist_bop_objs, size=3, replace=False))
-    sampled_distractor_bop_objs += list(np.random.choice(tyol_dist_bop_objs, size=3, replace=False))
+    sampled_target_bop_objs = list(np.random.choice(target_bop_objs, size=16, replace=False))
+    sampled_distractor_bop_objs = list(np.random.choice(tless_dist_bop_objs, size=2, replace=False))
+    sampled_distractor_bop_objs += list(np.random.choice(ycbv_dist_bop_objs, size=2, replace=False))
+    sampled_distractor_bop_objs += list(np.random.choice(tyol_dist_bop_objs, size=2, replace=False))
 
     # Randomize materials and set physics
     for obj in (sampled_target_bop_objs + sampled_distractor_bop_objs):        
@@ -107,7 +113,8 @@ for i in range(args.num_scenes):
                                                           surface=room_planes[0],
                                                           sample_pose_func=sample_initial_pose,
                                                           min_distance=0.01,
-                                                          max_distance=0.2)
+                                                          max_distance=0.2,
+                                                          max_tries=1000)
 
     # BVH tree used for camera obstacle checks
     bop_bvh_tree = bproc.object.create_bvh_tree_multi_objects(sampled_target_bop_objs + sampled_distractor_bop_objs)
@@ -137,14 +144,19 @@ for i in range(args.num_scenes):
     data = bproc.renderer.render()
 
     # Write data in bop format
-    bproc.writer.write_bop(os.path.join(args.output_dir, 'bop_data'),
+    print(f"Saving these objects: {len(sampled_target_bop_objs)}")
+    # print(f"Saving these depths: {data['depth']}")
+    # print(f"Saving these colors: {data['colors']}")
+    bproc.writer.write_bop(args.output_dir,
                            target_objects = sampled_target_bop_objs,
                            dataset = 'lm',
                            depth_scale = 0.1,
                            depths = data["depth"],
                            colors = data["colors"], 
                            color_file_format = "JPEG",
-                           ignore_dist_thres = 10)
+                           ignore_dist_thres = 10,
+                           train = not args.val,
+                           calc_mask_info_coco=False)     # TODO: to make this work, we need to install the packages to "C:\Users\grandid\blender\blender-3.3.1-windows-x64\blender-3.3.1-windows-x64\custom-python-packages\Python310\site-packages\bop_toolkit_lib\renderer_py.py",
     
     for obj in (sampled_target_bop_objs + sampled_distractor_bop_objs):      
         obj.hide(True)

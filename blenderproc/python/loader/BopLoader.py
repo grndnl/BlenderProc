@@ -50,6 +50,8 @@ def load_bop_objs(bop_dataset_path: str, model_type: str = "", obj_ids: Optional
         obj_ids = []
 
     obj_ids = obj_ids if obj_ids else model_p['obj_ids']
+    # print(f"Using obj ids: {obj_ids}")
+    # print(f"Type: {type(obj_ids[0])}")
 
     loaded_objects = []
     # if sampling is enabled
@@ -75,6 +77,11 @@ def load_bop_objs(bop_dataset_path: str, model_type: str = "", obj_ids: Optional
                       f"Total loaded amount {loaded_amount} while {num_of_objs_to_sample} are being requested")
     else:
         for obj_id in obj_ids:
+            # print(obj_id)
+            # print(type(obj_id))
+            # print(model_p)
+            # print(bop_dataset_name)
+            # print(scale)
             cur_obj = _BopLoader.load_mesh(obj_id, model_p, bop_dataset_name, scale)
             loaded_objects.append(cur_obj)
     # move the origin of the object to the world origin and on top of the X-Y plane
@@ -327,6 +334,9 @@ class _BopLoader:
         :return: Loaded mesh object.
         """
 
+        # print("boploader")
+        # print(model_p["model_tpath"])
+        # print(type(obj_id))
         model_path = model_p["model_tpath"].format(**{"obj_id": obj_id})
 
         # if the object was not previously loaded - load it, if duplication is allowed - duplicate it
